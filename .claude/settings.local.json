@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip freeze:*)",
+      "Bash(curl -s http://127.0.0.1:8000/auth/me)",
+      "Bash(python3 -m json.tool)"
+    ]
+  }
+}
