@@ -35,5 +35,8 @@ Thumbs.db
 # Logs
 logs/*.log
 
+# Plan
+plan.md
+
 # Claude
 .claude/
