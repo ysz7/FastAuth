@@ -5,9 +5,9 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import app.core.redis as redis_module
 from app.core.config import settings
 from app.core.database import get_db
-from app.core.redis import redis_client
 from app.models.user import User
 from app.modules.auth import utils
 from app.modules.auth.schemas import LoginRequest, RefreshRequest, RegisterRequest, TokenResponse, UserResponse
@@ -41,7 +41,7 @@ async def login(payload: LoginRequest, db: AsyncSession) -> TokenResponse:
     access_token = utils.create_access_token({"sub": str(user.id)})
     refresh_token = utils.create_refresh_token()
 
-    await redis_client.setex(
+    await redis_module.redis_client.setex(
         f"refresh:{refresh_token}",
         settings.refresh_token_expire_days * 24 * 60 * 60,
         str(user.id),
@@ -56,14 +56,14 @@ async def logout(token: str, payload: RefreshRequest) -> dict:
     if exp:
         ttl = int(exp - datetime.now(timezone.utc).timestamp())
         if ttl > 0:
-            await redis_client.setex(f"blacklist:{token}", ttl, "1")
+            await redis_module.redis_client.setex(f"blacklist:{token}", ttl, "1")
 
-    await redis_client.delete(f"refresh:{payload.refresh_token}")
+    await redis_module.redis_client.delete(f"refresh:{payload.refresh_token}")
     return {"message": "Successfully logged out"}
 
 
 async def refresh(payload: RefreshRequest, db: AsyncSession) -> TokenResponse:
-    user_id = await redis_client.get(f"refresh:{payload.refresh_token}")
+    user_id = await redis_module.redis_client.get(f"refresh:{payload.refresh_token}")
     if not user_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired refresh token")
 
@@ -71,12 +71,12 @@ async def refresh(payload: RefreshRequest, db: AsyncSession) -> TokenResponse:
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
-    await redis_client.delete(f"refresh:{payload.refresh_token}")
+    await redis_module.redis_client.delete(f"refresh:{payload.refresh_token}")
 
     new_access_token = utils.create_access_token({"sub": str(user.id)})
     new_refresh_token = utils.create_refresh_token()
 
-    await redis_client.setex(
+    await redis_module.redis_client.setex(
         f"refresh:{new_refresh_token}",
         settings.refresh_token_expire_days * 24 * 60 * 60,
         str(user.id),
@@ -89,7 +89,7 @@ async def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
 ) -> UserResponse:
-    if await redis_client.exists(f"blacklist:{token}"):
+    if await redis_module.redis_client.exists(f"blacklist:{token}"):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has been revoked")
 
     payload = utils.decode_access_token(token)
