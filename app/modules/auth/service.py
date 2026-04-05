@@ -8,6 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import app.core.redis as redis_module
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.logging import get_logger
+
+logger = get_logger("auth")
 from app.models.user import User
 from app.modules.auth import utils
 from app.modules.auth.schemas import LoginRequest, RefreshRequest, RegisterRequest, TokenResponse, UserResponse
@@ -30,12 +33,14 @@ async def register(payload: RegisterRequest, db: AsyncSession) -> UserResponse:
     db.add(user)
     await db.commit()
     await db.refresh(user)
+    logger.info("user_registered", extra={"user_id": user.id, "email": user.email})
     return UserResponse.model_validate(user)
 
 
 async def login(payload: LoginRequest, db: AsyncSession) -> TokenResponse:
     user = await db.scalar(select(User).where(User.email == payload.email))
     if not user or not utils.verify_password(payload.password, user.hashed_password):
+        logger.warning("login_failed", extra={"email": payload.email})
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
 
     access_token = utils.create_access_token({"sub": str(user.id)})
@@ -47,6 +52,7 @@ async def login(payload: LoginRequest, db: AsyncSession) -> TokenResponse:
         str(user.id),
     )
 
+    logger.info("user_logged_in", extra={"user_id": user.id, "email": user.email})
     return TokenResponse(access_token=access_token, refresh_token=refresh_token)
 
 
@@ -59,6 +65,7 @@ async def logout(token: str, payload: RefreshRequest) -> dict:
             await redis_module.redis_client.setex(f"blacklist:{token}", ttl, "1")
 
     await redis_module.redis_client.delete(f"refresh:{payload.refresh_token}")
+    logger.info("user_logged_out")
     return {"message": "Successfully logged out"}
 
 
