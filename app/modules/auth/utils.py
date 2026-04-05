@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+import secrets
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -26,3 +27,7 @@ def decode_access_token(token: str) -> dict:
         return jwt.decode(token, settings.secret_key, algorithms=["HS256"])
     except JWTError:
         return {}
+
+
+def create_refresh_token() -> str:
+    return secrets.token_hex(32)
