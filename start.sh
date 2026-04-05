@@ -1,5 +1,8 @@
 #!/bin/bash
 
+echo "Starting PostgreSQL..."
+sudo systemctl start postgresql
+
 echo "Starting Redis..."
 sudo systemctl start redis
 
