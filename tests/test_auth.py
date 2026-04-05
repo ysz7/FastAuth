@@ -80,6 +80,30 @@ async def test_refresh_invalid_token(client):
 
 
 @pytest.mark.asyncio
+async def test_change_password(client, auth_tokens):
+    response = await client.post("/auth/change-password", json={
+        "current_password": "password123",
+        "new_password": "newpassword456",
+    }, headers={"Authorization": f"Bearer {auth_tokens['access_token']}"})
+    assert response.status_code == 200
+
+    login = await client.post("/auth/login", json={
+        "email": "user@test.com",
+        "password": "newpassword456",
+    })
+    assert login.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_change_password_wrong_current(client, auth_tokens):
+    response = await client.post("/auth/change-password", json={
+        "current_password": "wrongpassword",
+        "new_password": "newpassword456",
+    }, headers={"Authorization": f"Bearer {auth_tokens['access_token']}"})
+    assert response.status_code == 400
+
+
+@pytest.mark.asyncio
 async def test_logout(client, auth_tokens):
     response = await client.post("/auth/logout", json={
         "refresh_token": auth_tokens["refresh_token"]

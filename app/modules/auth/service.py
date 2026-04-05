@@ -13,7 +13,7 @@ from app.core.logging import get_logger
 logger = get_logger("auth")
 from app.models.user import User
 from app.modules.auth import utils
-from app.modules.auth.schemas import LoginRequest, RefreshRequest, RegisterRequest, TokenResponse, UserResponse
+from app.modules.auth.schemas import ChangePasswordRequest, LoginRequest, RefreshRequest, RegisterRequest, TokenResponse, UserResponse
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
@@ -109,3 +109,19 @@ async def get_current_user(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
     return UserResponse.model_validate(user)
+
+
+async def change_password(
+    payload: ChangePasswordRequest,
+    current_user: UserResponse,
+    db: AsyncSession,
+) -> dict:
+    user = await db.get(User, current_user.id)
+    if not utils.verify_password(payload.current_password, user.hashed_password):
+        logger.warning("change_password_failed", extra={"user_id": current_user.id})
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect")
+
+    user.hashed_password = utils.hash_password(payload.new_password)
+    await db.commit()
+    logger.info("password_changed", extra={"user_id": current_user.id})
+    return {"message": "Password changed successfully"}
