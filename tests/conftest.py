@@ -6,9 +6,12 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 import app.core.redis as redis_module
 from app.core.database import Base, get_db
+from app.core.limiter import limiter
 from app.main import app
 
-TEST_DATABASE_URL = "sqlite+aiosqlite:///./test.db"
+limiter.enabled = False
+
+TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
 test_engine = create_async_engine(TEST_DATABASE_URL)
 TestSessionLocal = async_sessionmaker(test_engine, expire_on_commit=False)
