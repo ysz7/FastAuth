@@ -18,6 +18,11 @@ async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
     return await service.login(payload, db)
 
 
+@router.post("/logout")
+async def logout(token: str = Depends(service.oauth2_scheme)):
+    return await service.logout(token)
+
+
 @router.get("/me", response_model=UserResponse)
 async def me(current_user: UserResponse = Depends(service.get_current_user)):
     return current_user

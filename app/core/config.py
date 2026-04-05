@@ -4,6 +4,7 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     app_name: str = "FastAuth"
     database_url: str = "sqlite+aiosqlite:///./fastauth.db"
+    redis_url: str = "redis://localhost:6379"
     secret_key: str = "changeme"
     access_token_expire_minutes: int = 30
 
