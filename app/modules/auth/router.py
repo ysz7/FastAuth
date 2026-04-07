@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.limiter import limiter
 from app.modules.auth import service
+from app.modules.auth.dependencies import CurrentUser
 from app.modules.auth.schemas import ChangePasswordRequest, LoginRequest, RefreshRequest, RegisterRequest, TokenResponse, UserResponse
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -35,7 +36,7 @@ async def refresh(request: Request, payload: RefreshRequest, db: AsyncSession = 
 
 @router.get("/me", response_model=UserResponse)
 @limiter.limit("30/minute")
-async def me(request: Request, current_user: UserResponse = Depends(service.get_current_user)):
+async def me(request: Request, current_user: CurrentUser):
     return current_user
 
 
@@ -44,7 +45,7 @@ async def me(request: Request, current_user: UserResponse = Depends(service.get_
 async def change_password(
     request: Request,
     payload: ChangePasswordRequest,
-    current_user: UserResponse = Depends(service.get_current_user),
+    current_user: CurrentUser,
     db: AsyncSession = Depends(get_db),
 ):
     return await service.change_password(payload, current_user, db)
